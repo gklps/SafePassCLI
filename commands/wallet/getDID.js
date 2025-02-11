@@ -1,13 +1,15 @@
-import chalk from 'chalk';
 import { getUserDID } from '../../utils/auth.js';
+import { showError, showInfo, showBanner, createTable } from '../../utils/ui.js';
 
 export default function getDID() {
+  showBanner();
   const did = getUserDID();
   if (did) {
-    console.log(chalk.green('\nYour Wallet DID:'));
-    console.log(chalk.blue(did));
-    console.log(chalk.yellow('\nShare this DID with others to receive RBT tokens'));
+    const table = createTable(['Your Wallet DID']);
+    table.push([did]);
+    console.log(table.toString());
+    showInfo('Share this DID with others to receive RBT tokens');
   } else {
-    console.log(chalk.red('Not logged in. Please login first.'));
+    showError('Not logged in. Please login first.');
   }
 }

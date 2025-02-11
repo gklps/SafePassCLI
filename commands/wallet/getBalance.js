@@ -1,39 +1,44 @@
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import config from '../../config.js';
 import { getAuthHeaders, getUserDID } from '../../utils/auth.js';
+import { createLoadingSpinner, showError, createTable, showBanner } from '../../utils/ui.js';
 
 export default async function getBalance() {
   try {
     const did = getUserDID();
     if (!did) {
-      console.log(chalk.red('Not logged in. Please login first.'));
+      showError('Not logged in. Please login first.');
       return;
     }
 
-    const spinner = ora('Fetching balance...').start();
+    showBanner();
+    const spinner = createLoadingSpinner('Fetching your wallet balance...').start();
 
     const response = await axios.get(`${config.baseURL}/request_balance?did=${did}`, {
       headers: getAuthHeaders()
     });
 
-    spinner.stop();
+    spinner.success();
 
     if (response.data.status) {
-      console.log(chalk.green('\nBalance retrieved successfully!'));
+      const table = createTable(['DID', 'RBT Amount', 'Locked', 'Pinned', 'Pledged']);
+      
       response.data.result.forEach(account => {
-        console.log(chalk.blue('\nAccount Information:'));
-        console.log(chalk.white('DID:'), account.did);
-        console.log(chalk.white('RBT Amount:'), account.rbt_amount);
-        console.log(chalk.white('Locked RBT:'), account.locked_rbt);
-        console.log(chalk.white('Pinned RBT:'), account.pinned_rbt);
-        console.log(chalk.white('Pledged RBT:'), account.pledged_rbt);
+        table.push([
+          account.did,
+          account.rbt_amount.toString(),
+          account.locked_rbt.toString(),
+          account.pinned_rbt.toString(),
+          account.pledged_rbt.toString()
+        ]);
       });
+
+      console.log('\nWallet Balance:');
+      console.log(table.toString());
     } else {
-      console.log(chalk.red('Failed to get balance:', response.data.message));
+      showError(`Failed to get balance: ${response.data.message}`);
     }
   } catch (error) {
-    console.error(chalk.red('Error getting balance:'), error.response?.data?.message || error.message);
+    showError(`Error getting balance: ${error.response?.data?.message || error.message}`);
   }
 }

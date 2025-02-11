@@ -1,12 +1,13 @@
 import inquirer from 'inquirer';
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import config from '../../config.js';
 import { saveToken } from '../../utils/auth.js';
+import { createLoadingSpinner, showSuccess, showError, showBanner } from '../../utils/ui.js';
 
 export default async function login() {
   try {
+    showBanner();
+
     const answers = await inquirer.prompt([
       {
         type: 'input',
@@ -22,27 +23,26 @@ export default async function login() {
       }
     ]);
 
-    const spinner = ora('Logging in...').start();
+    const spinner = createLoadingSpinner('Logging in to Rubix network...').start();
 
     const response = await axios.post(`${config.baseURL}/login`, {
       email: answers.email,
       password: answers.password
     });
 
-    spinner.stop();
-
     if (response.data.token) {
-      if (saveToken(response.data.token)) {
-        console.log(chalk.green('\nLogin successful!'));
-        console.log(chalk.blue('Token has been saved'));
+      if (saveToken(response.data.token, answers.email)) {
+        spinner.success();
+        showSuccess('Successfully logged in to Rubix network!');
       } else {
-        console.log(chalk.yellow('\nLogin successful, but failed to save token'));
-        console.log(chalk.blue('Token:'), response.data.token);
+        spinner.error();
+        showError('Login successful, but failed to save credentials');
       }
     } else {
-      console.log(chalk.red('Login failed'));
+      spinner.error();
+      showError('Login failed');
     }
   } catch (error) {
-    console.error(chalk.red('Error logging in:'), error.response?.data?.error || error.message);
+    showError(`Error logging in: ${error.response?.data?.error || error.message}`);
   }
 }

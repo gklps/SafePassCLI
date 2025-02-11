@@ -7,23 +7,37 @@ function decodeJWT(token) {
     const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString('utf8'));
     return payload;
   } catch (error) {
-    console.error('Error decoding JWT:', error.message);
     return null;
   }
 }
 
-export function getStoredToken() {
-  try {
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    const configFile = path.join(homeDir, '.rubix', 'config.json');
-    if (fs.existsSync(configFile)) {
-      const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-      return config.token;
-    }
-  } catch (error) {
-    console.error('Error reading token:', error.message);
+function getConfigPath() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  return path.join(homeDir, '.rubix', 'config.json');
+}
+
+function readConfig() {
+  const configFile = getConfigPath();
+  if (fs.existsSync(configFile)) {
+    return JSON.parse(fs.readFileSync(configFile, 'utf8'));
   }
-  return null;
+  return { accounts: {}, activeAccount: null };
+}
+
+function writeConfig(config) {
+  const configFile = getConfigPath();
+  const configDir = path.dirname(configFile);
+  
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+}
+
+export function getStoredToken() {
+  const config = readConfig();
+  return config.activeAccount ? config.accounts[config.activeAccount]?.token : null;
 }
 
 export function getAuthHeaders() {
@@ -39,35 +53,71 @@ export function getUserDID() {
   return payload?.sub || null;
 }
 
-export function saveToken(token) {
+export function saveToken(token, email) {
   try {
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    const configDir = path.join(homeDir, '.rubix');
-    const configFile = path.join(configDir, 'config.json');
-
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
+    const config = readConfig();
+    const payload = decodeJWT(token);
+    
+    if (!payload) {
+      return false;
     }
 
-    fs.writeFileSync(configFile, JSON.stringify({ token }, null, 2));
+    config.accounts[email] = {
+      token,
+      email,
+      did: payload.sub
+    };
+    config.activeAccount = email;
+
+    writeConfig(config);
     return true;
   } catch (error) {
-    console.error('Error saving token:', error.message);
     return false;
   }
 }
 
 export function clearToken() {
   try {
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    const configFile = path.join(homeDir, '.rubix', 'config.json');
+    const config = readConfig();
+    const activeEmail = config.activeAccount;
     
-    if (fs.existsSync(configFile)) {
-      fs.unlinkSync(configFile);
+    if (activeEmail && config.accounts[activeEmail]) {
+      delete config.accounts[activeEmail];
+      config.activeAccount = Object.keys(config.accounts)[0] || null;
+      writeConfig(config);
     }
     return true;
   } catch (error) {
-    console.error('Error clearing token:', error.message);
     return false;
+  }
+}
+
+export function switchAccount(email) {
+  try {
+    const config = readConfig();
+    
+    if (!config.accounts[email]) {
+      return { success: false, message: 'Account not found' };
+    }
+
+    config.activeAccount = email;
+    writeConfig(config);
+    return { success: true, message: `Switched to account: ${email}` };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+export function listAccounts() {
+  try {
+    const config = readConfig();
+    const accounts = Object.keys(config.accounts).map(email => ({
+      email,
+      did: config.accounts[email].did,
+      isActive: email === config.activeAccount
+    }));
+    return { success: true, accounts };
+  } catch (error) {
+    return { success: false, message: error.message };
   }
 }

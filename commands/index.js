@@ -2,6 +2,8 @@
 export { default as createUser } from './user/createUser.js';
 export { default as login } from './user/login.js';
 export { default as logout } from './user/logout.js';
+export { default as switchUserAccount } from './user/switchAccount.js';
+export { default as listUserAccounts } from './user/listAccounts.js';
 
 // Wallet Operations
 export { default as createWallet } from './wallet/createWallet.js';

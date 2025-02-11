@@ -1,12 +1,12 @@
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import inquirer from 'inquirer';
 import config from '../../config.js';
 import { getAuthHeaders } from '../../utils/auth.js';
+import { createLoadingSpinner, showSuccess, showError, showBanner } from '../../utils/ui.js';
 
 export default async function createWallet() {
   try {
+    showBanner();
     const answers = await inquirer.prompt([
       {
         type: 'number',
@@ -16,7 +16,7 @@ export default async function createWallet() {
       }
     ]);
 
-    const spinner = ora('Creating wallet...').start();
+    const spinner = createLoadingSpinner('Creating your Rubix wallet...').start();
 
     const response = await axios.post(`${config.baseURL}/create_wallet`, {
       port: answers.port
@@ -24,15 +24,18 @@ export default async function createWallet() {
       headers: getAuthHeaders()
     });
 
-    spinner.stop();
-
     if (response.data.did) {
-      console.log(chalk.green('\nWallet created successfully!'));
-      console.log(chalk.blue('DID:'), response.data.did);
+      spinner.success();
+      showSuccess('Wallet created successfully!');
+      const table = createTable(['Field', 'Value']);
+      table.push(['DID', response.data.did]);
+      console.log('\nWallet Details:');
+      console.log(table.toString());
     } else {
-      console.log(chalk.red('Failed to create wallet'));
+      spinner.error();
+      showError('Failed to create wallet');
     }
   } catch (error) {
-    console.error(chalk.red('Error creating wallet:'), error.response?.data?.error || error.message);
+    showError(`Error creating wallet: ${error.response?.data?.error || error.message}`);
   }
 }

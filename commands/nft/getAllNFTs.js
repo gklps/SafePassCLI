@@ -1,31 +1,41 @@
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import config from '../../config.js';
 import { getAuthHeaders } from '../../utils/auth.js';
+import { createLoadingSpinner, showSuccess, showError, showBanner, createTable } from '../../utils/ui.js';
 
 export default async function getAllNFTs(options) {
   try {
-    const spinner = ora('Fetching all NFTs...').start();
+    showBanner();
+    const spinner = createLoadingSpinner('Fetching all NFTs...').start();
 
     const response = await axios.get(`${config.baseURL}/get_all_nft?did=${options.did}`, {
       headers: getAuthHeaders()
     });
 
-    spinner.stop();
-
     if (response.data.status) {
-      console.log(chalk.green('\nNFTs retrieved successfully!'));
+      spinner.success();
+      
+      if (response.data.result.length === 0) {
+        showInfo('No NFTs found');
+        return;
+      }
+
+      const table = createTable(['NFT ID', 'Value', 'Owner DID']);
       response.data.result.forEach(nft => {
-        console.log(chalk.blue('\nNFT Information:'));
-        console.log(chalk.white('NFT ID:'), nft.nft);
-        console.log(chalk.white('NFT Value:'), nft.nft_value);
-        console.log(chalk.white('Owner DID:'), nft.owner_did);
+        table.push([
+          nft.nft,
+          nft.nft_value.toString(),
+          nft.owner_did
+        ]);
       });
+
+      console.log('\nNFT Collection:');
+      console.log(table.toString());
     } else {
-      console.log(chalk.red('Failed to get NFTs:', response.data.message));
+      spinner.error();
+      showError(`Failed to get NFTs: ${response.data.message}`);
     }
   } catch (error) {
-    console.error(chalk.red('Error getting NFTs:'), error.response?.data?.message || error.message);
+    showError(`Error getting NFTs: ${error.response?.data?.message || error.message}`);
   }
 }

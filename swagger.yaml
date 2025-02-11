@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: Rubix Wallet API
-  description: API documentation for Rubix Wallet
+  title: SafePass Wallet API
+  description: API documentation for SafePass Wallet
   version: 1.0.0
 servers:
   - url: http://{host}:{port}

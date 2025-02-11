@@ -1,10 +1,11 @@
-import chalk from 'chalk';
 import { clearToken } from '../../utils/auth.js';
+import { showSuccess, showError, showBanner } from '../../utils/ui.js';
 
 export default function logout() {
+  showBanner();
   if (clearToken()) {
-    console.log(chalk.green('Successfully logged out'));
+    showSuccess('Successfully logged out from Rubix network');
   } else {
-    console.log(chalk.red('Error logging out'));
+    showError('Error logging out');
   }
 }

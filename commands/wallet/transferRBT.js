@@ -1,18 +1,18 @@
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import config from '../../config.js';
 import { getAuthHeaders, getUserDID } from '../../utils/auth.js';
+import { createLoadingSpinner, showSuccess, showError, showBanner, createTable } from '../../utils/ui.js';
 
 export default async function transferRBT(options) {
   try {
     const did = getUserDID();
     if (!did) {
-      console.log(chalk.red('Not logged in. Please login first.'));
+      showError('Not logged in. Please login first.');
       return;
     }
 
-    const spinner = ora('Transferring RBT...').start();
+    showBanner();
+    const spinner = createLoadingSpinner('Transferring RBT tokens...').start();
 
     const response = await axios.post(`${config.baseURL}/request_txn`, {
       did: did,
@@ -22,15 +22,22 @@ export default async function transferRBT(options) {
       headers: getAuthHeaders()
     });
 
-    spinner.stop();
-
     if (response.data.status) {
-      console.log(chalk.green('\nTransfer successful!'));
-      console.log(chalk.blue('Message:'), response.data.message);
+      spinner.success();
+      showSuccess('Transfer completed successfully!');
+      
+      const table = createTable(['Field', 'Value']);
+      table.push(
+        ['Amount', options.amount],
+        ['Recipient', options.to]
+      );
+      console.log('\nTransaction Details:');
+      console.log(table.toString());
     } else {
-      console.log(chalk.red('Transfer failed:', response.data.message));
+      spinner.error();
+      showError(`Transfer failed: ${response.data.message}`);
     }
   } catch (error) {
-    console.error(chalk.red('Error transferring RBT:'), error.response?.data?.message || error.message);
+    showError(`Error transferring RBT: ${error.response?.data?.message || error.message}`);
   }
 }

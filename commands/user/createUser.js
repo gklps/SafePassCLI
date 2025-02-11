@@ -1,11 +1,12 @@
 import inquirer from 'inquirer';
 import axios from 'axios';
-import chalk from 'chalk';
-import ora from 'ora';
 import config from '../../config.js';
+import { createLoadingSpinner, showSuccess, showError, showBanner } from '../../utils/ui.js';
 
 export default async function createUser() {
   try {
+    showBanner();
+
     const answers = await inquirer.prompt([
       {
         type: 'input',
@@ -32,7 +33,7 @@ export default async function createUser() {
       }
     ]);
 
-    const spinner = ora('Creating user...').start();
+    const spinner = createLoadingSpinner('Creating your Rubix account...').start();
 
     const response = await axios.post(`${config.baseURL}/create`, {
       email: answers.email,
@@ -41,17 +42,22 @@ export default async function createUser() {
       secret_key: answers.secret_key || answers.password
     });
 
-    spinner.stop();
-
     if (response.data.did) {
-      console.log(chalk.green('\nUser created successfully!'));
-      console.log(chalk.blue('DID:'), response.data.did);
-      console.log(chalk.blue('Email:'), response.data.email);
-      console.log(chalk.blue('Name:'), response.data.name);
+      spinner.success();
+      showSuccess('Account created successfully!');
+      console.log('\nAccount Details:');
+      const table = createTable(['Field', 'Value']);
+      table.push(
+        ['DID', response.data.did],
+        ['Email', response.data.email],
+        ['Name', response.data.name]
+      );
+      console.log(table.toString());
     } else {
-      console.log(chalk.red('Failed to create user'));
+      spinner.error();
+      showError('Failed to create account');
     }
   } catch (error) {
-    console.error(chalk.red('Error creating user:'), error.response?.data?.error || error.message);
+    showError(`Error creating account: ${error.response?.data?.error || error.message}`);
   }
 }

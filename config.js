@@ -17,7 +17,8 @@ const config = {
   port: 8080,
   host: process.env.RUBIX_API_HOST || getLocalIP(),
   get baseURL() {
-    return `http://${this.host}:${this.port}`;
+    //return `http://${this.host}:${this.port}`;
+    return `http://20.193.136.169:8080`
   }
 };
 
