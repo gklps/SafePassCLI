@@ -1,0 +1,22 @@
+{
+  "name": "rubix-wallet-cli",
+  "version": "1.0.0",
+  "description": "CLI wallet for Rubix blockchain",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "rubix-wallet": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "postinstall": "chmod +x index.js"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "axios": "^1.6.2",
+    "inquirer": "^9.2.12",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1",
+    "form-data": "^4.0.0"
+  }
+}

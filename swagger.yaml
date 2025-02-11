@@ -1,0 +1,910 @@
+openapi: 3.0.0
+info:
+  title: Rubix Wallet API
+  description: API documentation for Rubix Wallet
+  version: 1.0.0
+servers:
+  - url: http://{host}:{port}
+    variables:
+      host:
+        default: localhost
+        description: API host
+      port:
+        default: "8080"
+        description: API port
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+paths:
+  /create:
+    post:
+      summary: Create a new user
+      description: Creates a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                name:
+                  type: string
+                secret_key:
+                  type: string
+                  description: Optional, defaults to password if not provided
+              required:
+                - email
+                - password
+                - name
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  did:
+                    type: string
+                  email:
+                    type: string
+                  name:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/create -d '{
+          "email": "user@example.com",
+          "password": "password123",
+          "name": "John Doe",
+          "secret_key": "optional_secret"
+        }'
+
+  /login:
+    post:
+      summary: Login to wallet
+      description: Authenticates user and returns JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/login -d '{
+          "email": "user@example.com",
+          "password": "password123"
+        }'
+
+  /create_wallet:
+    post:
+      summary: Create a new wallet
+      description: Creates a new wallet for the authenticated user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                port:
+                  type: integer
+                  description: Rubix node port number
+              required:
+                - port
+      responses:
+        '200':
+          description: Wallet created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  did:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/create_wallet \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{"port": 20009}'
+
+  /request_balance:
+    get:
+      summary: Get wallet balance
+      description: Retrieves the balance for a specific wallet
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        did:
+                          type: string
+                        rbt_amount:
+                          type: number
+                        locked_rbt:
+                          type: number
+                        pinned_rbt:
+                          type: number
+                        pledged_rbt:
+                          type: number
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/request_balance?did=YOUR_DID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /request_txn:
+    post:
+      summary: Transfer RBT
+      description: Transfer RBT to another wallet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                  description: Sender DID
+                receiver:
+                  type: string
+                  description: Receiver DID
+                rbt_amount:
+                  type: number
+                  description: Amount to transfer
+              required:
+                - did
+                - receiver
+                - rbt_amount
+      responses:
+        '200':
+          description: Transfer successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/request_txn \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "SENDER_DID",
+            "receiver": "RECEIVER_DID",
+            "rbt_amount": 1.0
+          }'
+
+  /create_ft:
+    post:
+      summary: Create Fungible Tokens
+      description: Creates new fungible tokens
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                ft_name:
+                  type: string
+                ft_count:
+                  type: integer
+                token_count:
+                  type: integer
+              required:
+                - did
+                - ft_name
+                - ft_count
+                - token_count
+      responses:
+        '200':
+          description: FT created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/create_ft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "YOUR_DID",
+            "ft_name": "MyToken",
+            "ft_count": 100,
+            "token_count": 1
+          }'
+
+  /transfer_ft:
+    post:
+      summary: Transfer Fungible Tokens
+      description: Transfer FTs to another wallet
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sender:
+                  type: string
+                receiver:
+                  type: string
+                ft_name:
+                  type: string
+                ft_count:
+                  type: integer
+                creatorDID:
+                  type: string
+                quorum_type:
+                  type: integer
+              required:
+                - sender
+                - receiver
+                - ft_name
+                - ft_count
+                - creatorDID
+                - quorum_type
+      responses:
+        '200':
+          description: FT transferred successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/transfer_ft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "sender": "SENDER_DID",
+            "receiver": "RECEIVER_DID",
+            "ft_name": "MyToken",
+            "ft_count": 10,
+            "creatorDID": "CREATOR_DID",
+            "quorum_type": 2
+          }'
+
+  /get_all_ft:
+    get:
+      summary: List all FTs
+      description: Get all fungible tokens for a wallet
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: FTs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        creator_did:
+                          type: string
+                        ft_count:
+                          type: integer
+                        ft_name:
+                          type: string
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/get_all_ft?did=YOUR_DID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /get_ft_chain:
+    get:
+      summary: Get FT chain
+      description: Get the chain of a specific fungible token
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tokenID
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: FT chain retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: array
+                    items:
+                      type: object
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/get_ft_chain?did=YOUR_DID&tokenID=TOKEN_ID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /create_nft:
+    post:
+      summary: Create NFT
+      description: Creates a new NFT
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                metadata:
+                  type: string
+                  description: Path to metadata file
+                artifact:
+                  type: string
+                  description: Path to artifact file
+              required:
+                - did
+                - metadata
+                - artifact
+      responses:
+        '200':
+          description: NFT created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/create_nft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "YOUR_DID",
+            "metadata": "/path/to/metadata.json",
+            "artifact": "/path/to/artifact.png"
+          }'
+
+  /subscribe_nft:
+    post:
+      summary: Subscribe to NFT
+      description: Subscribe to an NFT
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                nft:
+                  type: string
+              required:
+                - did
+                - nft
+      responses:
+        '200':
+          description: NFT subscribed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/subscribe_nft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "YOUR_DID",
+            "nft": "NFT_ID"
+          }'
+
+  /deploy_nft:
+    post:
+      summary: Deploy NFT
+      description: Deploy an NFT
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                nft:
+                  type: string
+                quorum_type:
+                  type: integer
+                  enum: [1, 2]
+              required:
+                - did
+                - nft
+                - quorum_type
+      responses:
+        '200':
+          description: NFT deployed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/deploy_nft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "YOUR_DID",
+            "nft": "NFT_ID",
+            "quorum_type": 2
+          }'
+
+  /execute_nft:
+    post:
+      summary: Execute NFT
+      description: Execute an NFT transaction
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                nft:
+                  type: string
+                nft_data:
+                  type: string
+                nft_value:
+                  type: number
+                owner:
+                  type: string
+                quorum_type:
+                  type: integer
+                receiver:
+                  type: string
+              required:
+                - nft
+                - owner
+                - receiver
+                - quorum_type
+      responses:
+        '200':
+          description: NFT executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/execute_nft \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "comment": "NFT transfer",
+            "nft": "NFT_ID",
+            "nft_data": "",
+            "nft_value": 1.0,
+            "owner": "OWNER_DID",
+            "quorum_type": 2,
+            "receiver": "RECEIVER_DID"
+          }'
+
+  /get_nft:
+    get:
+      summary: Get NFT
+      description: Get NFT details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: nft
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NFT retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: object
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/get_nft?did=YOUR_DID&nft=NFT_ID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /get_nft_chain:
+    get:
+      summary: Get NFT chain
+      description: Get the chain of transactions for an NFT
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: nft
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: latest
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NFT chain retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: array
+                    items:
+                      type: object
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/get_nft_chain?did=YOUR_DID&nft=NFT_ID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /get_all_nft:
+    get:
+      summary: Get all NFTs
+      description: Get all NFTs for a wallet
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NFTs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nft:
+                          type: string
+                        nft_value:
+                          type: number
+                        owner_did:
+                          type: string
+      x-curl-example: |
+        curl -X GET "http://localhost:8080/get_all_nft?did=YOUR_DID" \
+          -H 'Authorization: Bearer YOUR_TOKEN'
+
+  /generate-smart-contract:
+    post:
+      summary: Generate Smart Contract Token
+      description: Generate a new smart contract token
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                binaryCodePath:
+                  type: string
+                  format: binary
+                rawCodePath:
+                  type: string
+                  format: binary
+                schemaFilePath:
+                  type: string
+                  format: binary
+              required:
+                - did
+                - binaryCodePath
+                - rawCodePath
+                - schemaFilePath
+      responses:
+        '200':
+          description: Smart contract generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+                  result:
+                    type: object
+                    properties:
+                      binaryFilePath:
+                        type: string
+                      rawFilePath:
+                        type: string
+                      schemaFilePath:
+                        type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/generate-smart-contract \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -F 'did=YOUR_DID' \
+          -F 'binaryCodePath=@/path/to/contract.wasm' \
+          -F 'rawCodePath=@/path/to/contract.rs' \
+          -F 'schemaFilePath=@/path/to/schema.json'
+
+  /deploy-smart-contract:
+    post:
+      summary: Deploy Smart Contract
+      description: Deploy a smart contract
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deployerAddr:
+                  type: string
+                smartContractToken:
+                  type: string
+                quorumType:
+                  type: integer
+                  enum: [1, 2]
+                rbtAmount:
+                  type: number
+                comment:
+                  type: string
+              required:
+                - deployerAddr
+                - smartContractToken
+                - quorumType
+                - rbtAmount
+      responses:
+        '200':
+          description: Smart contract deployed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/deploy-smart-contract \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "deployerAddr": "YOUR_DID",
+            "smartContractToken": "TOKEN_ID",
+            "quorumType": 2,
+            "rbtAmount": 1.0,
+            "comment": "Deploy smart contract"
+          }'
+
+  /execute-smart-contract:
+    post:
+      summary: Execute Smart Contract
+      description: Execute a smart contract
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                smartContractToken:
+                  type: string
+                smartContractData:
+                  type: string
+                executorAddr:
+                  type: string
+                quorumType:
+                  type: integer
+              required:
+                - smartContractToken
+                - executorAddr
+                - quorumType
+      responses:
+        '200':
+          description: Smart contract executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/execute-smart-contract \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "comment": "Execute contract",
+            "smartContractToken": "TOKEN_ID",
+            "smartContractData": "DATA",
+            "executorAddr": "EXECUTOR_DID",
+            "quorumType": 2
+          }'
+
+  /subscribe-smart-contract:
+    post:
+      summary: Subscribe to Smart Contract
+      description: Subscribe to a smart contract
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                did:
+                  type: string
+                smartContractToken:
+                  type: string
+              required:
+                - did
+                - smartContractToken
+      responses:
+        '200':
+          description: Smart contract subscribed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  message:
+                    type: string
+      x-curl-example: |
+        curl -X POST http://localhost:8080/subscribe-smart-contract \
+          -H 'Authorization: Bearer YOUR_TOKEN' \
+          -d '{
+            "did": "YOUR_DID",
+            "smartContractToken": "TOKEN_ID"
+          }'
